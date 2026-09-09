@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Butter Nav</title>
+    <meta
+      name="description"
+      content="A navbar whose mega-menu is one card that morphs between menus. A shadcn registry component."
+    />
+    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+    <meta property="og:title" content="Butter Nav" />
+    <meta
+      property="og:description"
+      content="A navbar whose mega-menu is one card that morphs between menus. A shadcn registry component."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" id="favicon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      // Applied before first paint so the page never flashes the wrong theme.
+      (function () {
+        try {
+          var saved = localStorage.getItem("butter-nav:theme");
+          if (saved === "light" || saved === "dark") {
+            document.documentElement.dataset.theme = saved;
+          }
+        } catch (error) {}
+      })();
+    </script>
+    <style>
+      /* ====================================================================
+         Tokens — light is the base, dark overrides only the values.
+         ==================================================================== */
+
+      :root {
+        --bg-100: #fafafa; /* page canvas          */
+        --bg-200: #ffffff; /* elevated surfaces    */
+        --bg-300: #f2f2f2; /* recessed surfaces    */
+        --hover: #ebebeb;
+
+        --text-100: #171717; /* primary            */
+        --text-200: #4d4d4d; /* secondary          */
+        --text-300: #8f8f8f; /* muted              */
+
+        --accent: #0072f5;
+        --focus: #0072f5;
+
+        --border: rgba(0, 0, 0, 0.08);
+        --separator: rgba(0, 0, 0, 0.06);
+
+        --shadow-border: 0 0 0 1px var(--border);
+        --shadow-small: var(--shadow-border), 0 2px 2px rgba(0, 0, 0, 0.04);
+        --shadow-menu: var(--shadow-border), 0 1px 1px rgba(0, 0, 0, 0.02),
+          0 4px 8px -4px rgba(0, 0, 0, 0.04), 0 16px 24px -8px rgba(0, 0, 0, 0.06);
+        --focus-ring: 0 0 0 2px var(--bg-200), 0 0 0 4px var(--focus);
+        --header-shadow: 0 1px 0 0 rgba(0, 0, 0, 0.1);
+        --stage: #fafafa; /* the component's own page canvas */
+
+        --syntax-comment: #8f8f8f;
+        --syntax-string: #398e4a;
+        --syntax-keyword: #7820bc;
+        --syntax-tag: #0062d1;
+        --syntax-number: #067a6e;
+
+        --sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        --mono: "Geist Mono", ui-monospace, SFMono-Regular, "Roboto Mono",
+          Menlo, monospace;
+
+        --page: 860px;
+        --header-height: 64px;
+
+        --swift: cubic-bezier(0.175, 0.885, 0.32, 1.1);
+
+        color-scheme: light;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg-100: #0a0a0a;
+          --bg-200: #0f0f0f;
+          --bg-300: #1a1a1a;
+          --hover: #1f1f1f;
+
+          --text-100: #ededed;
+          --text-200: #a1a1a1;
+          --text-300: #8f8f8f;
+
+          --accent: #52a8ff;
+          --focus: #0072f5;
+
+          --border: rgba(255, 255, 255, 0.09);
+          --separator: rgba(255, 255, 255, 0.06);
+          --header-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.08);
+          --stage: #0f0f0f;
+
+          --syntax-comment: #8f8f8f;
+          --syntax-string: #6cda75;
+          --syntax-keyword: #bf89ec;
+          --syntax-tag: #52aeff;
+          --syntax-number: #45dec5;
+
+          color-scheme: dark;
+        }
+      }
+
+      :root[data-theme="dark"] {
+        --bg-100: #0a0a0a;
+        --bg-200: #0f0f0f;
+        --bg-300: #1a1a1a;
+        --hover: #1f1f1f;
+
+        --text-100: #ededed;
+        --text-200: #a1a1a1;
+        --text-300: #8f8f8f;
+
+        --accent: #52a8ff;
+        --focus: #0072f5;
+
+        --border: rgba(255, 255, 255, 0.09);
+        --separator: rgba(255, 255, 255, 0.06);
+        --header-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.08);
+        --stage: #0f0f0f;
+
+        --syntax-comment: #8f8f8f;
+        --syntax-string: #6cda75;
+        --syntax-keyword: #bf89ec;
+        --syntax-tag: #52aeff;
+        --syntax-number: #45dec5;
+
+        color-scheme: dark;
+      }
+
+      /* ==================================================================== */
+
+      * {
+        box-sizing: border-box;
+      }
+
+      /* Hover transitions must not replay when the whole palette swaps. */
+      .theme-switching * {
+        transition: none !important;
+      }
+
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 96px;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg-100);
+        color: var(--text-100);
+        font-family: var(--sans);
+        font-size: 16px;
+        font-feature-settings: "liga";
+        -webkit-font-smoothing: antialiased;
+      }
+
+      :focus-visible {
+        outline: none;
+        box-shadow: var(--focus-ring);
+        border-radius: 6px;
+      }
+
+      /* ------------------------------------------------------------ header */
+
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        height: var(--header-height);
+        background: var(--bg-100);
+        box-shadow: var(--header-shadow);
+      }
+
+      .header-inner {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        max-width: var(--page);
+        height: 100%;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+
+      .mark {
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        background: var(--text-100);
+        color: var(--bg-200);
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .crumb {
+        font-size: 14px;
+        color: var(--text-300);
+      }
+
+      .crumb b {
+        color: var(--text-100);
+        font-weight: 400;
+      }
+
+      /* ------------------------------------------------------ theme toggle */
+
+      .theme {
+        display: flex;
+        gap: 2px;
+        margin-left: auto;
+        padding: 2px;
+        border-radius: 9999px;
+        box-shadow: var(--shadow-border);
+      }
+
+      .theme button {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 0;
+        border-radius: 9999px;
+        background: transparent;
+        color: var(--text-300);
+        cursor: pointer;
+      }
+
+      .theme button:hover {
+        color: var(--text-100);
+      }
+
+      .theme button[aria-pressed="true"] {
+        background: var(--bg-200);
+        color: var(--text-100);
+        box-shadow: var(--shadow-border);
+      }
+
+      /* ------------------------------------------------------------ layout */
+
+      main {
+        max-width: var(--page);
+        margin: 0 auto;
+        padding: 64px 24px 128px;
+      }
+
+      section {
+        margin-top: 64px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 48px;
+        font-weight: 600;
+        line-height: 48px;
+        letter-spacing: -2.28px;
+      }
+
+      h2 {
+        margin: 0 0 8px;
+        font-size: 32px;
+        font-weight: 600;
+        line-height: 40px;
+        letter-spacing: -1.28px;
+      }
+
+      h3 {
+        margin: 32px 0 8px;
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 20px;
+        letter-spacing: -0.28px;
+      }
+
+      .lede {
+        max-width: 64ch;
+        margin: 16px 0 0;
+        font-size: 16px;
+        line-height: 24px;
+        color: var(--text-200);
+      }
+
+      .sub {
+        max-width: 68ch;
+        margin: 0 0 24px;
+        font-size: 14px;
+        line-height: 20px;
+        color: var(--text-200);
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 24px;
+      }
+
+      .tag {
+        padding: 4px 10px;
+        border-radius: 9999px;
+        box-shadow: var(--shadow-border);
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text-200);
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      /* ----------------------------------------------------------- actions */
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 32px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 40px;
+        padding: 0 16px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--text-200);
+        font-family: var(--sans);
+        font-size: 14px;
+        font-weight: 400;
+        line-height: 14px;
+        cursor: pointer;
+        box-shadow: var(--shadow-border);
+        transition: background-color 0.15s linear, color 0.15s linear;
+      }
+
+      .btn:hover {
+        background: var(--hover);
+        color: var(--text-100);
+      }
+
+      .btn--primary {
+        background: var(--text-100);
+        color: var(--bg-200);
+        box-shadow: none;
+      }
+
+      .btn--primary:hover {
+        background: var(--text-200);
+        color: var(--bg-200);
+      }
+
+      .note {
+        margin: 12px 0 0;
+        font-size: 12px;
+        line-height: 16px;
+        color: var(--text-300);
+      }
+
+      /* ------------------------------------------------------------- cards */
+
+      .card {
+        border-radius: 12px;
+        background: var(--bg-200);
+        box-shadow: var(--shadow-small);
+        overflow: hidden;
+      }
+
+      .card-head {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 8px;
+        box-shadow: inset 0 -1px 0 var(--separator);
+      }
+
+      .tab {
+        height: 32px;
+        padding: 0 12px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--text-200);
+        font-family: var(--sans);
+        font-size: 14px;
+        line-height: 14px;
+        cursor: pointer;
+        transition: background-color 0.15s linear, color 0.15s linear;
+      }
+
+      .tab:hover {
+        background: var(--hover);
+        color: var(--text-100);
+      }
+
+      .tab[aria-selected="true"] {
+        background: var(--bg-300);
+        color: var(--text-100);
+      }
+
+      .filename {
+        padding: 0 12px; /* 8px card-head padding + 12px = the 20px rail */
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--text-200);
+      }
+
+      .stage {
+        position: relative;
+        height: 400px;
+        overflow: hidden;
+        background: var(--stage);
+      }
+
+      .stage iframe {
+        display: block;
+        width: 1120px;
+        height: 520px;
+        border: 0;
+        transform-origin: top left;
+      }
+
+      pre {
+        margin: 0;
+        padding: 16px 20px; /* left edge matches the tab labels above */
+        overflow: auto;
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 20px;
+        tab-size: 2;
+      }
+
+      pre.tall {
+        max-height: 440px;
+      }
+
+      .cmd {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 8px 8px 20px; /* icon button lines up with the head row */
+        font-family: var(--mono);
+        font-size: 13px;
+        line-height: 20px;
+      }
+
+      .cmd .prompt {
+        color: var(--text-300);
+      }
+
+      .cmd code {
+        flex: 1;
+        overflow: auto;
+        white-space: nowrap;
+        font-family: var(--mono);
+      }
+
+      .icon-btn {
+        display: grid;
+        place-items: center;
+        flex: none;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border: 0;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--text-300);
+        cursor: pointer;
+        transition: background-color 0.15s linear, color 0.15s linear;
+      }
+
+      .icon-btn:hover {
+        background: var(--hover);
+        color: var(--text-100);
+      }
+
+      /* ------------------------------------------------------------ tables */
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+        line-height: 20px;
+        table-layout: fixed;
+      }
+
+      col.col-prop {
+        width: 21%;
+      }
+
+      col.col-type {
+        width: 22%;
+      }
+
+      col.col-default {
+        width: 15%;
+      }
+
+      col.col-key {
+        width: 16%;
+      }
+
+      td code,
+      th {
+        overflow-wrap: anywhere;
+      }
+
+      th {
+        padding: 12px 20px;
+        box-shadow: inset 0 -1px 0 var(--separator);
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-300);
+        text-align: left;
+      }
+
+      td {
+        padding: 12px 20px;
+        box-shadow: inset 0 -1px 0 var(--separator);
+        vertical-align: top;
+        color: var(--text-200);
+      }
+
+      tr:last-child td {
+        box-shadow: none;
+      }
+
+      td:first-child {
+        color: var(--text-100);
+      }
+
+      code {
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+
+      td code,
+      li code,
+      p code {
+        padding: 1px 5px;
+        border-radius: 6px;
+        background: var(--bg-300);
+        font-size: 12px;
+        color: var(--text-100);
+        white-space: nowrap;
+      }
+
+      /* -------------------------------------------------------------- list */
+
+      ul.notes {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      ul.notes li {
+        padding: 16px 0;
+        box-shadow: inset 0 -1px 0 var(--separator);
+        font-size: 14px;
+        line-height: 20px;
+        color: var(--text-200);
+      }
+
+      ul.notes li:last-child {
+        box-shadow: none;
+      }
+
+      ul.notes b {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--text-100);
+        font-weight: 500;
+      }
+
+      /* ------------------------------------------------------------ syntax */
+
+      .t-com {
+        color: var(--syntax-comment);
+      }
+      .t-str {
+        color: var(--syntax-string);
+      }
+      .t-key {
+        color: var(--syntax-keyword);
+      }
+      .t-tag {
+        color: var(--syntax-tag);
+      }
+      .t-num {
+        color: var(--syntax-number);
+      }
+
+      /* ------------------------------------------------------------- toast */
+
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 32px;
+        z-index: 90;
+        padding: 8px 16px;
+        border-radius: 9999px;
+        background: var(--bg-200);
+        box-shadow: var(--shadow-menu);
+        font-size: 14px;
+        line-height: 20px;
+        opacity: 0;
+        transform: translateX(-50%) scale(0.96);
+        pointer-events: none;
+        transition: opacity 0.2s linear, transform 0.2s var(--swift);
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+      }
+
+      footer {
+        max-width: var(--page);
+        margin: 0 auto;
+        padding: 24px;
+        font-size: 12px;
+        line-height: 16px;
+        color: var(--text-300);
+      }
+
+      @media (max-width: 600px) {
+        main {
+          padding: 40px 16px 96px;
+        }
+        h1 {
+          font-size: 32px;
+          line-height: 36px;
+          letter-spacing: -1.28px;
+        }
+        h2 {
+          font-size: 24px;
+          line-height: 32px;
+          letter-spacing: -0.96px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <div class="header-inner">
+        <span class="mark">B</span>
+        <span class="crumb">registry / <b>butter-nav</b></span>
+
+        <div class="theme" role="group" aria-label="Theme">
+          <button type="button" data-theme-set="light" aria-pressed="false" title="Light">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <circle cx="8" cy="8" r="3.25" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M8 1v1.5M8 13.5V15M15 8h-1.5M2.5 8H1M12.95 3.05l-1.06 1.06M4.11 11.89l-1.06 1.06M12.95 12.95l-1.06-1.06M4.11 4.11L3.05 3.05" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            <span class="sr-only"></span>
+          </button>
+          <button type="button" data-theme-set="system" aria-pressed="true" title="System">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <rect x="1.75" y="2.75" width="12.5" height="9" rx="1.75" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M5.5 14h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button type="button" data-theme-set="dark" aria-pressed="false" title="Dark">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M13.5 9.5A5.75 5.75 0 016.5 2.6a5.75 5.75 0 107 6.9z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <h1>Butter Nav</h1>
+      <p class="lede">
+        A navbar whose mega-menu is a single card. It morphs its width, height
+        and position between menus instead of swapping dropdowns — the contents
+        cross-fade in the direction you travelled, and a highlight pill tracks
+        the cursor across the links.
+      </p>
+
+      <div class="meta">
+        <span class="tag">react 18+</span>
+        <span class="tag">tailwind</span>
+        <span class="tag">zero deps</span>
+        <span class="tag">light + dark</span>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn--primary" data-copy="cli">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M4 6l2.5 2L4 10M8.5 10.5H12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2" stroke="currentColor" stroke-width="1.3"/>
+          </svg>
+          Copy npm i
+        </button>
+        <button class="btn" data-copy="prompt">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M8 2l1.5 3.9 4.2.3-3.2 2.7 1 4.1L8 10.7 4.5 13l1-4.1L2.3 6.2l4.2-.3L8 2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+          </svg>
+          Copy prompt
+        </button>
+      </div>
+      <p class="note">
+        The prompt describes every measurement and motion rule, so an agent can
+        rebuild the component inside your own design system.
+      </p>
+
+      <!-- --------------------------------------------------- preview -->
+      <section id="preview">
+        <h2>Preview</h2>
+        <p class="sub">
+          Hover across Product, Resources and Customers. One card, three shapes.
+          The preview follows the theme above.
+        </p>
+        <div class="card">
+          <div class="card-head" role="tablist">
+            <button class="tab" role="tab" aria-selected="true" data-pane="live">
+              Preview
+            </button>
+            <button class="tab" role="tab" aria-selected="false" data-pane="code">
+              Code
+            </button>
+            <button class="icon-btn" style="margin-left: auto" data-copy="usage" aria-label="Copy usage">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <rect x="5.75" y="5.75" width="8.5" height="8.5" rx="2" stroke="currentColor" stroke-width="1.3"/>
+                <path d="M10.25 5.5v-1a2 2 0 00-2-2h-4.5a2 2 0 00-2 2v4.5a2 2 0 002 2h1" stroke="currentColor" stroke-width="1.3"/>
+              </svg>
+            </button>
+          </div>
+          <div data-pane-body="live" class="stage">
+            <iframe id="preview-frame" src="preview.html" title="Butter Nav preview"></iframe>
+          </div>
+          <div data-pane-body="code" hidden>
+            <pre class="tall"><code id="usage-code"></code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------- installation -->
+      <section id="installation">
+        <h2>Installation</h2>
+        <p class="sub">
+          Butter Nav ships as a shadcn registry item. The CLI writes the file
+          into <code>components/ui</code> and wires up anything it needs.
+        </p>
+
+        <div class="card">
+          <div class="card-head">
+            <button class="tab" aria-selected="true" data-pm="npm">npm</button>
+            <button class="tab" aria-selected="false" data-pm="pnpm">pnpm</button>
+            <button class="tab" aria-selected="false" data-pm="yarn">yarn</button>
+            <button class="tab" aria-selected="false" data-pm="bun">bun</button>
+          </div>
+          <div class="cmd">
+            <span class="prompt">$</span>
+            <code id="cli-cmd"></code>
+            <button class="icon-btn" data-copy="cli" aria-label="Copy command">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <rect x="5.75" y="5.75" width="8.5" height="8.5" rx="2" stroke="currentColor" stroke-width="1.3"/>
+                <path d="M10.25 5.5v-1a2 2 0 00-2-2h-4.5a2 2 0 00-2 2v4.5a2 2 0 002 2h1" stroke="currentColor" stroke-width="1.3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <h3>Register the namespace once</h3>
+        <p class="sub">
+          Add it to <code>components.json</code> and every item installs by name
+          — <code>npx shadcn@latest add @butter/butter-nav</code>.
+        </p>
+        <div class="card">
+          <pre><code id="registry-code"></code></pre>
+        </div>
+      </section>
+
+      <!-- ----------------------------------------------------- usage -->
+      <section id="usage">
+        <h2>Usage</h2>
+        <p class="sub">
+          Everything is config. Items without a <code>menu</code> render as
+          plain links; items with one get a panel in the shared card.
+        </p>
+        <div class="card">
+          <pre class="tall"><code id="usage-code-2"></code></pre>
+        </div>
+      </section>
+
+      <!-- ----------------------------------------------------- props -->
+      <section id="props">
+        <h2>Props</h2>
+        <div class="card">
+          <table>
+            <colgroup>
+              <col class="col-prop" />
+              <col class="col-type" />
+              <col class="col-default" />
+              <col />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Prop</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="props-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- -------------------------------------------------- keyboard -->
+      <section id="keyboard">
+        <h2>Keyboard</h2>
+        <div class="card">
+          <table>
+            <colgroup>
+              <col class="col-key" />
+              <col />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>Behaviour</th>
+              </tr>
+            </thead>
+            <tbody id="keys-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ----------------------------------------------------- notes -->
+      <section id="motion">
+        <h2>How the motion works</h2>
+        <p class="sub">
+          There is one card, not five dropdowns — nothing mounts or unmounts
+          when you move between menus.
+        </p>
+        <ul class="notes" id="notes-list"></ul>
+      </section>
+
+      <!-- ---------------------------------------------------- manual -->
+      <section id="manual">
+        <h2>Manual installation</h2>
+        <p class="sub">
+          Copy <code>components/ui/butter-nav.tsx</code> into your project. It
+          imports only <code>react</code> and your <code>cn()</code> helper —
+          install these two if <code>@/lib/utils</code> does not exist yet.
+        </p>
+        <div class="card">
+          <div class="cmd">
+            <span class="prompt">$</span>
+            <code>npm i clsx tailwind-merge</code>
+            <button class="icon-btn" data-copy="deps" aria-label="Copy command">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <rect x="5.75" y="5.75" width="8.5" height="8.5" rx="2" stroke="currentColor" stroke-width="1.3"/>
+                <path d="M10.25 5.5v-1a2 2 0 00-2-2h-4.5a2 2 0 00-2 2v4.5a2 2 0 002 2h1" stroke="currentColor" stroke-width="1.3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <h3>Component source</h3>
+        <div class="card">
+          <div class="card-head">
+            <span class="filename">components/ui/butter-nav.tsx</span>
+            <button class="icon-btn" style="margin-left: auto" data-copy="source" aria-label="Copy source">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <rect x="5.75" y="5.75" width="8.5" height="8.5" rx="2" stroke="currentColor" stroke-width="1.3"/>
+                <path d="M10.25 5.5v-1a2 2 0 00-2-2h-4.5a2 2 0 00-2 2v4.5a2 2 0 002 2h1" stroke="currentColor" stroke-width="1.3"/>
+              </svg>
+            </button>
+          </div>
+          <pre class="tall"><code id="source-code">Loading source…</code></pre>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      Built from the Accord Figma spec, motion modelled on linear.app, page
+      styled after the Vercel design language. All example copy is dummy
+      content. <a href="demo.html">Open the full-page demo</a>.
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite">Copied</div>
+
+    <script>
+      /* ------------------------------------------------------- theme ---- */
+      const THEME_KEY = "butter-nav:theme";
+      const frame = document.getElementById("preview-frame");
+      const favicon = document.getElementById("favicon");
+      const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
+
+      // The tab dot inverts with the resolved theme.
+      function paintFavicon(mode) {
+        const dark = mode === "dark" || (mode === "system" && systemDark.matches);
+        const fill = dark ? "#ededed" : "#171717";
+        favicon.href =
+          "data:image/svg+xml," +
+          encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">' +
+              '<circle cx="16" cy="16" r="9" fill="' + fill + '"/></svg>'
+          );
+      }
+
+      function readTheme() {
+        try {
+          return localStorage.getItem(THEME_KEY) || "system";
+        } catch (error) {
+          return "system";
+        }
+      }
+
+      function setTheme(mode) {
+        document.documentElement.classList.add("theme-switching");
+        window.setTimeout(
+          () => document.documentElement.classList.remove("theme-switching"),
+          60
+        );
+
+        if (mode === "system") {
+          delete document.documentElement.dataset.theme;
+        } else {
+          document.documentElement.dataset.theme = mode;
+        }
+
+        try {
+          if (mode === "system") localStorage.removeItem(THEME_KEY);
+          else localStorage.setItem(THEME_KEY, mode);
+        } catch (error) {}
+
+        document.querySelectorAll("[data-theme-set]").forEach((button) => {
+          button.setAttribute(
+            "aria-pressed",
+            String(button.dataset.themeSet === mode)
+          );
+        });
+
+        paintFavicon(mode);
+
+        // Keep the preview in the same theme as the page.
+        if (frame && frame.contentWindow) {
+          frame.contentWindow.postMessage(
+            { type: "butter-nav:theme", theme: mode === "system" ? null : mode },
+            "*"
+          );
+        }
+      }
+
+      document.querySelectorAll("[data-theme-set]").forEach((button) => {
+        button.addEventListener("click", () => setTheme(button.dataset.themeSet));
+      });
+
+      setTheme(readTheme());
+      frame.addEventListener("load", () => setTheme(readTheme()));
+
+      // Follow the OS while the toggle is on "system".
+      systemDark.addEventListener("change", () => {
+        if (readTheme() === "system") setTheme("system");
+      });
+
+      /* ------------------------------------------------------ syntax ---- */
+      const KEYWORDS =
+        "import|from|export|default|const|let|var|function|return|type|interface|extends|new|await|async|if|else|for|of|in|null|true|false|as|void";
+
+      function highlight(source) {
+        const escaped = source
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+
+        return escaped.replace(
+          new RegExp(
+            "(\\/\\*[\\s\\S]*?\\*\\/|\\/\\/[^\\n]*)" +
+              "|(\"(?:[^\"\\\\\\n]|\\\\.)*\"|'(?:[^'\\\\\\n]|\\\\.)*'|`(?:[^`\\\\]|\\\\.)*`)" +
+              "|(&lt;\\/?[A-Z][\\w.]*)" +
+              "|\\b(" + KEYWORDS + ")\\b" +
+              "|\\b(\\d+(?:\\.\\d+)?)\\b",
+            "g"
+          ),
+          (m, com, str, tag, key, num) => {
+            if (com) return '<span class="t-com">' + com + "</span>";
+            if (str) return '<span class="t-str">' + str + "</span>";
+            if (tag) return '<span class="t-tag">' + tag + "</span>";
+            if (key) return '<span class="t-key">' + key + "</span>";
+            if (num) return '<span class="t-num">' + num + "</span>";
+            return m;
+          }
+        );
+      }
+
+      /* ------------------------------------------------------ content --- */
+      // Served from the deployed origin, so the copied command always works.
+      const ORIGIN = location.protocol.startsWith("http")
+        ? location.origin
+        : "https://your-registry.dev";
+      const REGISTRY_URL = ORIGIN + "/r/butter-nav.json";
+
+      const CLI = {
+        npm: "npx shadcn@latest add " + REGISTRY_URL,
+        pnpm: "pnpm dlx shadcn@latest add " + REGISTRY_URL,
+        yarn: "yarn dlx shadcn@latest add " + REGISTRY_URL,
+        bun: "bunx --bun shadcn@latest add " + REGISTRY_URL,
+      };
+
+      const REGISTRY_SNIPPET = [
+        "{",
+        '  "registries": {',
+        '    "@butter": "' + ORIGIN + '/r/{name}.json"',
+        "  }",
+        "}",
+      ].join("\n");
+
+      const USAGE = `import { ButterNav } from "@/components/ui/butter-nav"
+
+export function SiteHeader() {
+  return (
+    <ButterNav
+      brand="Pro.nav"
+      cta={{ label: "Sign up", href: "/signup" }}
+      secondary={[{ label: "Log in", href: "/login" }]}
+      items={[
+        {
+          label: "Product",
+          menu: {
+            columns: [
+              {
+                type: "cards",
+                items: [
+                  {
+                    title: "Intake",
+                    desc: "Bring requests and context in from every tool",
+                    href: "/intake",
+                  },
+                  {
+                    title: "Plan and monitor",
+                    desc: "Set the plan and follow it from idea to launch",
+                    href: "/plan",
+                  },
+                ],
+              },
+              {
+                type: "links",
+                items: [
+                  { label: "Changelog", href: "/changelog" },
+                  { label: "Security", href: "/security" },
+                ],
+              },
+            ],
+            footer: {
+              badge: "New",
+              text: "Priority inbox",
+              cta: { label: "Learn more", href: "/inbox" },
+            },
+          },
+        },
+        { label: "Pricing", href: "/pricing" },
+      ]}
+    />
+  )
+}`;
+
+      const PROPS = [
+        ["brand", "ReactNode", "—", "Wordmark on the left of the bar. Accepts a string or your own logo node."],
+        ["items", "ButterNavItem[]", "required", "Top-level entries in order. An item with a <code>menu</code> becomes a trigger; without one it is a plain link."],
+        ["secondary", "ButterNavLink[]", "[]", "Text links after the divider — a login link, docs, anything small."],
+        ["cta", "ButterNavLink", "—", "The pill button at the far right. Omit it and the pill is not rendered."],
+        ["openDelay", "number", "90", "Hover intent before a cold open, in ms. Swapping between open menus is always instant."],
+        ["closeDelay", "number", "170", "Grace period after the pointer leaves, so a diagonal exit does not close the panel."],
+        ["morphDuration", "number", "460", "Length of the width / height / position morph. Also drives the pill."],
+        ["closeOnScroll", "boolean", "true", "Dismiss the panel when the page scrolls under it."],
+        ["sticky", "boolean", "true", "Pins the bar to the top of the viewport."],
+        ["linkComponent", "ElementType", "\"a\"", "Swap in <code>next/link</code> so navigation stays client-side."],
+        ["className", "string", "—", "Merged onto the outer <code>&lt;header&gt;</code> via <code>cn()</code>."],
+      ];
+
+      const KEYS = [
+        ["Hover", "Opens after 90ms; moving to another trigger morphs the open card instantly."],
+        ["Click", "Toggles the panel — works on touch, where hover intent is skipped."],
+        ["ArrowDown", "Opens the panel and moves focus to its first link."],
+        ["Tab", "Walks into the panel; leaving the component entirely closes it."],
+        ["Escape", "Closes and returns focus to the trigger that opened it."],
+      ];
+
+      const NOTES = [
+        ["One card, measured up front.", "Every panel stays mounted at <code>opacity: 0</code>, so its natural size can be read at any moment — no layout thrash while the card is animating."],
+        ["The shell morphs, the content follows.", "Width, height and <code>translateX</code> animate together on <code>cubic-bezier(.32,.72,0,1)</code> — a long decelerating tail, no overshoot. The panel is centred on its trigger and clamped 16px from the viewport edge."],
+        ["Direction-aware cross-fade.", "Inactive panels rest ±14px on the side they will exit toward, so text always leaves against your travel and arrives with it — 200ms, slightly behind the 460ms shell."],
+        ["A pill that tracks the cursor.", "One rounded highlight slides behind the links on the same curve, and jumps into place without a transition the first time it appears."],
+        ["No dead zones.", "An invisible 14px bridge above the card covers the gap under the bar, so a diagonal pointer path never falls through and closes the menu."],
+        ["Accessible by default.", "Real <code>&lt;button&gt;</code> triggers with <code>aria-expanded</code> / <code>aria-controls</code>, panels as labelled regions, visible focus rings, and reduced-motion support."],
+        ["Light and dark.", "The palette is driven by tokens, so the same component reads correctly on either theme — and one config also renders the mobile sheet under <code>md</code>."],
+      ];
+
+      /* -------------------------------------------------------- render -- */
+      document.getElementById("usage-code").innerHTML = highlight(USAGE);
+      document.getElementById("usage-code-2").innerHTML = highlight(USAGE);
+      document.getElementById("registry-code").innerHTML = highlight(REGISTRY_SNIPPET);
+
+      document.getElementById("props-body").innerHTML = PROPS.map(
+        (row) =>
+          "<tr><td><code>" + row[0] + "</code></td><td><code>" + row[1] +
+          "</code></td><td><code>" + row[2] + "</code></td><td>" + row[3] + "</td></tr>"
+      ).join("");
+
+      document.getElementById("keys-body").innerHTML = KEYS.map(
+        (row) => "<tr><td><code>" + row[0] + "</code></td><td>" + row[1] + "</td></tr>"
+      ).join("");
+
+      document.getElementById("notes-list").innerHTML = NOTES.map(
+        (row) => "<li><b>" + row[0] + "</b>" + row[1] + "</li>"
+      ).join("");
+
+      /* ------------------------------------------------ preview scale -- */
+      const stage = document.querySelector(".stage");
+
+      function fitPreview() {
+        const scale = Math.min(1, stage.clientWidth / 1120);
+        frame.style.transform = "scale(" + scale + ")";
+        stage.style.height = Math.round(520 * scale) + "px";
+      }
+
+      fitPreview();
+      window.addEventListener("resize", fitPreview);
+
+      /* ------------------------------------------------------- pm tabs -- */
+      const cliEl = document.getElementById("cli-cmd");
+      let currentCli = CLI.npm;
+      cliEl.textContent = currentCli;
+
+      document.querySelectorAll("[data-pm]").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          document
+            .querySelectorAll("[data-pm]")
+            .forEach((t) => t.setAttribute("aria-selected", "false"));
+          tab.setAttribute("aria-selected", "true");
+          currentCli = CLI[tab.dataset.pm];
+          cliEl.textContent = currentCli;
+        });
+      });
+
+      /* ----------------------------------------------------- pane tabs -- */
+      document.querySelectorAll("[data-pane]").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          document.querySelectorAll("[data-pane]").forEach((t) => {
+            t.setAttribute("aria-selected", String(t === tab));
+            document.querySelector(
+              '[data-pane-body="' + t.dataset.pane + '"]'
+            ).hidden = t !== tab;
+          });
+          if (tab.dataset.pane === "live") fitPreview();
+        });
+      });
+
+      /* ------------------------------------------------------- sources -- */
+      let SOURCE = "";
+      let PROMPT = "";
+
+      fetch("components/ui/butter-nav.tsx")
+        .then((r) => (r.ok ? r.text() : Promise.reject()))
+        .then((text) => {
+          SOURCE = text;
+          document.getElementById("source-code").innerHTML = highlight(text);
+        })
+        .catch(() => {
+          document.getElementById("source-code").textContent =
+            "Serve this page over http (python -m http.server) to load the source.";
+        });
+
+      fetch("prompt.md")
+        .then((r) => (r.ok ? r.text() : Promise.reject()))
+        .then((text) => {
+          PROMPT = text;
+        })
+        .catch(() => {});
+
+      /* ---------------------------------------------------------- copy -- */
+      const toast = document.getElementById("toast");
+      let toastTimer;
+
+      function flash(message) {
+        toast.textContent = message;
+        toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
+      }
+
+      async function copy(text, label) {
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch (error) {
+          const area = document.createElement("textarea");
+          area.value = text;
+          area.style.position = "fixed";
+          area.style.opacity = "0";
+          document.body.appendChild(area);
+          area.select();
+          document.execCommand("copy");
+          area.remove();
+        }
+        flash(label);
+      }
+
+      document.querySelectorAll("[data-copy]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const kind = button.dataset.copy;
+          if (kind === "cli") copy(currentCli, "Install command copied");
+          else if (kind === "prompt")
+            copy(
+              PROMPT || "",
+              PROMPT ? "Prompt copied" : "Prompt is still loading"
+            );
+          else if (kind === "usage") copy(USAGE, "Usage snippet copied");
+          else if (kind === "deps") copy("npm i clsx tailwind-merge", "Command copied");
+          else if (kind === "source")
+            copy(SOURCE || "", SOURCE ? "Source copied" : "Source not loaded");
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Butter Nav</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="src/butter-nav.css" />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      html,
+      body {
+        margin: 0;
+        background: #0f0f0f;
+        color: #f2f2f2;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, Helvetica, Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .hero {
+        max-width: 840px;
+        margin: 0 auto;
+        padding: 180px 16px 240px;
+      }
+
+      .hero h1 {
+        margin: 0;
+        font-size: clamp(40px, 8vw, 88px);
+        font-weight: 400;
+        letter-spacing: -0.04em;
+        line-height: 1.02;
+        background: linear-gradient(180deg, #ffffff 30%, #8f8f8f 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .hero p {
+        max-width: 46ch;
+        margin: 24px 0 0;
+        font-size: 16px;
+        line-height: 1.6;
+        color: rgba(242, 242, 242, 0.6);
+      }
+
+      .hint {
+        display: inline-flex;
+        gap: 10px;
+        margin-top: 40px;
+        padding: 8px 14px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        font-size: 12px;
+        color: rgba(242, 242, 242, 0.7);
+      }
+
+      .filler {
+        max-width: 840px;
+        margin: 0 auto;
+        padding: 0 16px 200px;
+        color: rgba(242, 242, 242, 0.35);
+        font-size: 14px;
+        line-height: 2;
+      }
+    </style>
+  </head>
+  <body>
+    <header id="nav"></header>
+
+    <main>
+      <section class="hero">
+        <h1>Butter&#8209;smooth navigation, built as one component.</h1>
+        <p>
+          Hover across Product, Resources and Customers — the panel keeps its
+          shape and morphs its width, height and position in a single motion,
+          while the contents cross-fade in the direction you travelled.
+        </p>
+        <span class="hint">Hover the nav · Esc closes · Tab to explore</span>
+      </section>
+
+      <section class="filler">
+        Scroll region — the bar is sticky, and an open menu dismisses on scroll,
+        outside click, Escape, or when focus leaves the component. Resize below
+        860px to get the mobile sheet with accordions.
+      </section>
+    </main>
+
+    <script src="src/butter-nav.js"></script>
+    <script>
+      // All content is dummy data — swap this object for real copy/links.
+      window.nav = new ButterNav(document.getElementById("nav"), ButterNav.defaultConfig);
+    </script>
+  </body>
+</html>

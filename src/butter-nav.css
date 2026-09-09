@@ -1,0 +1,618 @@
+/* ==========================================================================
+   Butter Nav — a Linear-style navbar with a morphing mega-menu
+   Design source: Figma "Accord" › node 504:173
+   Motion reference: linear.app top navigation
+   ========================================================================== */
+
+.bn,
+.bn *,
+.bn *::before,
+.bn *::after {
+  box-sizing: border-box;
+}
+
+.bn {
+  /* --- design tokens (from Figma) --- */
+  --bn-bar-w: 840px;
+  --bn-bar-h: 80px;
+  --bn-bar-r: 18px;
+  --bn-bar-bg: #000000;
+
+  --bn-text: #f2f2f2;
+  --bn-text-dim: rgba(242, 242, 242, 0.62);
+  --bn-strong: #f2f2f2;
+  --bn-brand: #ffffff;
+  --bn-divider: rgba(242, 242, 242, 0.25);
+
+  --bn-cta-bg: #f2f2f2;
+  --bn-cta-fg: #0f0f0f;
+
+  --bn-panel-bg: #0b0b0b;
+  --bn-panel-inner: rgba(255, 255, 255, 0.028);
+  --bn-line: rgba(255, 255, 255, 0.09);
+  --bn-hover: rgba(255, 255, 255, 0.08);
+
+  /* Figma stroke: #AAAAAA at 20%, position Inside, weight 0.4 */
+  --bn-stroke: inset 0 0 0 0.4px rgba(170, 170, 170, 0.2);
+
+  --bn-bar-shadow: var(--bn-stroke),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 12px 40px -12px rgba(0, 0, 0, 0.9);
+  --bn-panel-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 24px 60px -20px rgba(0, 0, 0, 0.9);
+
+  --bn-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+
+  /* --- motion tokens ---
+     Curves from the animations.dev catalogue; every duration sits under the
+     300ms ceiling for UI motion. */
+  --bn-ease-out: cubic-bezier(0.23, 1, 0.32, 1); /* entering / exiting */
+  --bn-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); /* moving on screen */
+  --bn-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* the sheet */
+
+  --bn-morph: 240ms; /* size + position morph between menus */
+  --bn-open: 200ms; /* cold open — the deliberate half */
+  --bn-close: 140ms; /* system response — snappier than the open */
+  --bn-fade: 160ms; /* content cross-fade */
+  --bn-press: 160ms; /* press feedback */
+  --bn-tint: 120ms; /* hover tint */
+  --bn-pill-base: 100px; /* reference width the pill scales from */
+
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+  padding: 24px 16px 0;
+  font-family: var(--bn-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+.bn__inner {
+  position: relative;
+  width: 100%;
+  max-width: var(--bn-bar-w);
+  margin: 0 auto;
+}
+
+/* ---------------------------------------------------------------- the bar */
+
+.bn__bar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  height: var(--bn-bar-h);
+  padding: 0 24px;
+  border-radius: var(--bn-bar-r);
+  background: var(--bn-bar-bg);
+  box-shadow: var(--bn-bar-shadow);
+}
+
+.bn__brand {
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--bn-brand);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.bn__nav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-left: auto;
+}
+
+/* The sliding hover/active pill. Width is fixed and scaled on the GPU —
+   animating `width` would run layout on every frame of a hover effect. */
+.bn__pill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: var(--bn-pill-base);
+  height: 30px;
+  border-radius: 10px;
+  background: var(--bn-hover);
+  opacity: 0;
+  pointer-events: none;
+  transform-origin: 0 50%;
+  transform: translate3d(0, -50%, 0) scaleX(0);
+  transition: transform 220ms var(--bn-ease-out),
+    opacity var(--bn-tint) linear;
+}
+
+.bn__link {
+  position: relative;
+  z-index: 1;
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--bn-text);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 160ms linear;
+}
+
+.bn__link[aria-expanded="true"] {
+  opacity: 1;
+}
+
+/* Touch fires a phantom hover on tap, so hover motion is gated. */
+@media (hover: hover) and (pointer: fine) {
+  .bn__link:hover {
+    opacity: 1;
+  }
+}
+
+.bn__link:focus-visible {
+  outline: 2px solid var(--bn-strong);
+  outline-offset: 6px;
+  border-radius: 4px;
+}
+
+.bn__right {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-left: 24px;
+}
+
+.bn__divider {
+  width: 1px;
+  height: 20px;
+  background: var(--bn-divider);
+}
+
+.bn__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 40px;
+  background: var(--bn-cta-bg);
+  color: var(--bn-cta-fg);
+  font-size: 12px;
+  line-height: normal;
+  text-decoration: none;
+  white-space: nowrap;
+  transform: scale(1);
+  transition: transform var(--bn-press) var(--bn-ease-out),
+    opacity var(--bn-tint) ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bn__cta:hover {
+    opacity: 0.9;
+  }
+}
+
+/* Press feedback on any pressable surface: subtle, and fast to release. */
+.bn__cta:active {
+  transform: scale(0.97);
+  transition-duration: 100ms;
+}
+
+/* --------------------------------------------------------- the mega menu */
+
+.bn__pop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: 0;
+  pointer-events: none;
+}
+
+.bn__card {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-radius: 16px;
+  background: var(--bn-panel-bg);
+  box-shadow: var(--bn-stroke), 0 0 0 1px var(--bn-line),
+    var(--bn-panel-shadow);
+  overflow: hidden;
+  contain: paint;
+  opacity: 0;
+  /* Scales from the trigger that opened it, not from its own centre. */
+  transform-origin: var(--bn-origin, 50%) 0;
+  transform: translate3d(0, -4px, 0) scale(0.97);
+  pointer-events: none;
+  transition: width var(--bn-close) var(--bn-ease-out),
+    height var(--bn-close) var(--bn-ease-out),
+    transform var(--bn-close) var(--bn-ease-out),
+    opacity var(--bn-close) var(--bn-ease-out);
+}
+
+/* invisible bridge so the pointer can cross the 10px gap without closing */
+.bn__card::before {
+  content: "";
+  position: absolute;
+  top: -14px;
+  left: 0;
+  right: 0;
+  height: 14px;
+}
+
+/* The card's transform / width / height are driven from JS so the size and
+   the horizontal slide can be interpolated together. Opening is the
+   deliberate half, so it runs slower than the close above. */
+.bn.is-open .bn__card {
+  opacity: 1;
+  pointer-events: auto;
+  will-change: width, height, transform;
+  transition-duration: var(--bn-morph), var(--bn-morph), var(--bn-morph),
+    var(--bn-open);
+  transition-timing-function: var(--bn-ease-in-out), var(--bn-ease-in-out),
+    var(--bn-ease-in-out), var(--bn-ease-out);
+}
+
+.bn__panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: max-content;
+  padding: 8px;
+  opacity: 0;
+  pointer-events: none;
+  /* A touch of blur blends the two panels into one perceived transformation
+     instead of two overlapping states. */
+  filter: blur(3px);
+  transform: translate3d(var(--bn-shift, 12px), 0, 0);
+  transition: opacity var(--bn-fade) linear,
+    transform var(--bn-fade) var(--bn-ease-out),
+    filter var(--bn-fade) var(--bn-ease-out);
+}
+
+.bn__panel.is-active {
+  opacity: 1;
+  pointer-events: auto;
+  filter: blur(0);
+  transform: translate3d(0, 0, 0);
+  transition-delay: 40ms;
+}
+
+/* ------------------------------------------------------- panel internals */
+
+.bn__grid {
+  display: flex;
+  align-items: stretch;
+  border-radius: 12px;
+  background: var(--bn-panel-inner);
+}
+
+.bn__col {
+  padding: 22px 26px;
+  min-width: 240px;
+}
+
+.bn__col + .bn__col {
+  border-left: 1px solid var(--bn-line);
+}
+
+.bn__col--links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: flex-start;
+  min-width: 210px;
+}
+
+.bn__card-link {
+  display: block;
+  padding: 10px 12px;
+  margin: -10px -12px;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: background var(--bn-tint) ease;
+}
+
+.bn__card-link + .bn__card-link {
+  margin-top: 12px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bn__card-link:hover,
+  .bn__plain:hover {
+    background: var(--bn-hover);
+  }
+}
+
+.bn__card-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--bn-strong);
+}
+
+.bn__card-desc {
+  display: block;
+  margin-top: 4px;
+  max-width: 21ch;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--bn-text-dim);
+}
+
+.bn__plain {
+  display: block;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--bn-strong);
+  text-decoration: none;
+  transition: background var(--bn-tint) ease;
+}
+
+.bn__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
+  padding: 14px 18px 10px;
+  font-size: 13px;
+}
+
+.bn__badge {
+  display: inline-block;
+  margin-right: 8px;
+  font-weight: 600;
+  color: var(--bn-strong);
+}
+
+.bn__foot-text {
+  color: var(--bn-text-dim);
+}
+
+.bn__foot-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--bn-strong);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.bn__foot-cta span {
+  transition: transform 150ms var(--bn-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bn__foot-cta:hover span {
+    transform: translateX(3px);
+  }
+}
+
+/* --------------------------------------------------------------- mobile */
+
+.bn__burger {
+  display: none;
+  margin-left: auto;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  cursor: pointer;
+}
+
+.bn__burger i {
+  display: block;
+  width: 18px;
+  height: 1.5px;
+  margin: 0 auto;
+  background: var(--bn-text);
+  border-radius: 2px;
+  transition: transform var(--bn-morph) var(--bn-ease-in-out),
+    opacity var(--bn-tint) linear;
+}
+
+.bn__burger i + i {
+  margin-top: 5px;
+}
+
+.bn.is-sheet .bn__burger i:nth-child(1) {
+  transform: translateY(3.25px) rotate(45deg);
+}
+
+.bn.is-sheet .bn__burger i:nth-child(2) {
+  opacity: 0;
+}
+
+.bn.is-sheet .bn__burger i:nth-child(3) {
+  transform: translateY(-3.25px) rotate(-45deg);
+}
+
+.bn__sheet {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  right: 0;
+  display: none;
+  padding: 8px;
+  border-radius: 16px;
+  background: var(--bn-panel-bg);
+  box-shadow: var(--bn-stroke), 0 0 0 1px var(--bn-line),
+    var(--bn-panel-shadow);
+  opacity: 0;
+  transform: translate3d(0, -8px, 0) scale(0.98);
+  transform-origin: top center;
+  pointer-events: none;
+  transition: opacity var(--bn-close) var(--bn-ease-out),
+    transform var(--bn-close) var(--bn-ease-drawer);
+}
+
+.bn.is-sheet .bn__sheet {
+  transition-duration: var(--bn-open);
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.bn__acc-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  color: var(--bn-strong);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform var(--bn-press) var(--bn-ease-out),
+    background var(--bn-tint) ease;
+}
+
+.bn__acc-btn:active {
+  transform: scale(0.985);
+  transition-duration: 100ms;
+}
+
+.bn__acc-btn svg {
+  transition: transform var(--bn-morph) var(--bn-ease-in-out);
+}
+
+.bn__acc.is-open .bn__acc-btn svg {
+  transform: rotate(180deg);
+}
+
+.bn__acc-body {
+  height: 0;
+  overflow: hidden;
+  transition: height var(--bn-morph) var(--bn-ease-in-out);
+}
+
+.bn__acc-inner {
+  padding: 2px 14px 14px;
+}
+
+.bn__acc-inner a {
+  display: block;
+  padding: 9px 0;
+  font-size: 13px;
+  color: var(--bn-text-dim);
+  text-decoration: none;
+}
+
+.bn__acc-inner a:hover {
+  color: var(--bn-text);
+}
+
+@media (max-width: 860px) {
+  .bn {
+    padding-top: 16px;
+  }
+
+  .bn__bar {
+    height: 64px;
+    padding: 0 16px;
+  }
+
+  .bn__brand {
+    font-size: 20px;
+  }
+
+  .bn__nav,
+  .bn__right,
+  .bn__pop {
+    display: none;
+  }
+
+  .bn__burger {
+    display: block;
+  }
+
+  .bn__sheet {
+    display: block;
+  }
+}
+
+/* ------------------------------------------------------------ light theme */
+/* Follows the host page: `data-theme` on <html> wins, otherwise the OS. */
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]) .bn {
+    --bn-bar-bg: #ffffff;
+    --bn-text: #4d4d4d;
+    --bn-text-dim: #8f8f8f;
+    --bn-strong: #171717;
+    --bn-brand: #171717;
+    --bn-divider: rgba(0, 0, 0, 0.12);
+    --bn-cta-bg: #171717;
+    --bn-cta-fg: #ffffff;
+    --bn-panel-bg: #ffffff;
+    --bn-panel-inner: rgba(0, 0, 0, 0.02);
+    --bn-line: rgba(0, 0, 0, 0.08);
+    --bn-hover: rgba(0, 0, 0, 0.06);
+    --bn-bar-shadow: var(--bn-stroke), 0 0 0 1px rgba(0, 0, 0, 0.08),
+      0 8px 24px -12px rgba(0, 0, 0, 0.16);
+    --bn-panel-shadow: 0 1px 1px rgba(0, 0, 0, 0.02),
+      0 8px 16px -4px rgba(0, 0, 0, 0.04), 0 24px 32px -8px rgba(0, 0, 0, 0.06);
+  }
+}
+
+html[data-theme="light"] .bn {
+  --bn-bar-bg: #ffffff;
+  --bn-text: #4d4d4d;
+  --bn-text-dim: #8f8f8f;
+  --bn-strong: #171717;
+  --bn-brand: #171717;
+  --bn-divider: rgba(0, 0, 0, 0.12);
+  --bn-cta-bg: #171717;
+  --bn-cta-fg: #ffffff;
+  --bn-panel-bg: #ffffff;
+  --bn-panel-inner: rgba(0, 0, 0, 0.02);
+  --bn-line: rgba(0, 0, 0, 0.08);
+  --bn-hover: rgba(0, 0, 0, 0.06);
+  --bn-bar-shadow: var(--bn-stroke), 0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 8px 24px -12px rgba(0, 0, 0, 0.16);
+  --bn-panel-shadow: 0 1px 1px rgba(0, 0, 0, 0.02),
+    0 8px 16px -4px rgba(0, 0, 0, 0.04), 0 24px 32px -8px rgba(0, 0, 0, 0.06);
+}
+
+/* Reduced motion means gentler, not none: the fades that explain what
+   changed stay, everything that moves or resizes lands instantly. */
+@media (prefers-reduced-motion: reduce) {
+  .bn__card,
+  .bn__pill,
+  .bn__panel,
+  .bn__sheet,
+  .bn__acc-body,
+  .bn__acc-btn,
+  .bn__burger i,
+  .bn__cta,
+  .bn__foot-cta span {
+    transition-property: opacity !important;
+    transition-duration: 150ms !important;
+  }
+
+  .bn__panel {
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .bn__cta:active,
+  .bn__acc-btn:active {
+    transform: none !important;
+  }
+}

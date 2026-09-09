@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Butter Nav</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="src/butter-nav.css" />
+    <style>
+      /* The iframe paints its own canvas — a transparent document falls back
+         to the browser's white one, which showed through in dark mode.
+         All three theme states are resolved explicitly. */
+      :root {
+        color-scheme: dark;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #0f0f0f;
+      }
+
+      @media (prefers-color-scheme: light) {
+        html:not([data-theme="dark"]) {
+          color-scheme: light;
+        }
+
+        html:not([data-theme="dark"]),
+        html:not([data-theme="dark"]) body {
+          background: #fafafa;
+        }
+      }
+
+      html[data-theme="light"] {
+        color-scheme: light;
+      }
+
+      html[data-theme="light"],
+      html[data-theme="light"] body {
+        background: #fafafa;
+      }
+
+      html[data-theme="dark"] {
+        color-scheme: dark;
+      }
+
+      html[data-theme="dark"],
+      html[data-theme="dark"] body {
+        background: #0f0f0f;
+      }
+
+      .bn {
+        position: static;
+        padding-top: 28px;
+        --bn-font: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, Helvetica, Arial, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <header id="nav"></header>
+    <script src="src/butter-nav.js"></script>
+    <script>
+      // The docs page owns the theme; the preview just follows it.
+      function applyTheme(theme) {
+        if (theme === "light" || theme === "dark") {
+          document.documentElement.dataset.theme = theme;
+        } else {
+          delete document.documentElement.dataset.theme;
+        }
+      }
+
+      applyTheme(new URLSearchParams(location.search).get("theme"));
+
+      window.addEventListener("message", function (event) {
+        if (event.data && event.data.type === "butter-nav:theme") {
+          applyTheme(event.data.theme);
+        }
+      });
+
+      new ButterNav(document.getElementById("nav"), ButterNav.defaultConfig);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "butter-nav",
+  "homepage": "https://butter-nav.vercel.app",
+  "items": [
+    {
+      "name": "butter-nav",
+      "type": "registry:ui",
+      "title": "Butter Nav",
+      "description": "A floating navbar whose mega-menu is one card that morphs its width, height and position between menus, with a directional content cross-fade, a sliding hover pill, and light + dark themes.",
+      "files": [
+        {
+          "path": "components/ui/butter-nav.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    }
+  ]
+}
