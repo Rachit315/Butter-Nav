@@ -27,7 +27,8 @@
       // Applied before first paint so the page never flashes the wrong theme.
       (function () {
         try {
-          var saved = localStorage.getItem("butter-nav:theme");
+          var param = new URLSearchParams(location.search).get("theme");
+          var saved = param || localStorage.getItem("butter-nav:theme");
           if (saved === "light" || saved === "dark") {
             document.documentElement.dataset.theme = saved;
           }
@@ -231,6 +232,7 @@
         padding: 2px;
         border-radius: 9999px;
         box-shadow: var(--shadow-border);
+        flex-shrink: 0;
       }
 
       /* One thumb slides between the three segments — a transform, so the
@@ -246,6 +248,7 @@
         box-shadow: var(--shadow-border);
         transform: translate3d(0, 0, 0);
         transition: transform 200ms var(--ease-out);
+        flex-shrink: 0;
       }
 
       .theme button {
@@ -262,6 +265,19 @@
         color: var(--text-300);
         cursor: pointer;
         transition: color 150ms ease, transform var(--press) var(--ease-out);
+        flex-shrink: 0;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
       }
 
       .theme button[aria-pressed="true"] {
@@ -771,7 +787,6 @@
               <circle cx="8" cy="8" r="3.25" stroke="currentColor" stroke-width="1.3"/>
               <path d="M8 1v1.5M8 13.5V15M15 8h-1.5M2.5 8H1M12.95 3.05l-1.06 1.06M4.11 11.89l-1.06 1.06M12.95 12.95l-1.06-1.06M4.11 4.11L3.05 3.05" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
             </svg>
-            <span class="sr-only"></span>
           </button>
           <button type="button" data-theme-set="system" aria-pressed="true" title="System">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -1025,6 +1040,10 @@
 
       function readTheme() {
         try {
+          const param = new URLSearchParams(location.search).get("theme");
+          if (param === "light" || param === "dark" || param === "system") {
+            return param;
+          }
           return localStorage.getItem(THEME_KEY) || "system";
         } catch (error) {
           return "system";
