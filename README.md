@@ -102,17 +102,18 @@ plain link. Full table in `docs.html`.
 1. **Measure once.** All panels stay mounted at `opacity: 0`, so their natural
    width/height can be read without a reflow mid-animation.
 2. **Morph the shell.** `width`, `height` and `translate3d(x)` are set together
-   and interpolated with `cubic-bezier(0.32, 0.72, 0, 1)` over 460ms — a long
-   decelerating tail with no overshoot. The card is centred on the trigger and
-   clamped 16px from the viewport edge.
+   and interpolated with `cubic-bezier(0.77, 0, 0.175, 1)` over 240ms, from a
+   `transform-origin` pinned to the trigger that opened it.
 3. **Cross-fade directionally.** Inactive panels rest ±14px on the side they
-   will exit toward, over 200ms — faster than the shell, so the box leads and
-   the text follows.
-4. **The pill follows the cursor.** One rounded highlight animates
-   `transform`/`width` on the same curve, jumping into place the first time.
+   will exit toward, under a 3px blur that blends the two states into one
+   perceived transformation — 160ms, faster than the shell.
+4. **The pill follows the cursor.** One rounded highlight translates and
+   `scaleX`es off a fixed 100px base — never animating `width` — over 220ms.
 5. **Intent delays.** 90ms before a cold open, instant when swapping menus,
    170ms grace on leave, plus an invisible 14px bridge above the card so the
    pointer can cross the bar → panel gap.
+6. **Asymmetric.** Opening is deliberate (240ms); closing is the system
+   responding (140ms). Press feedback is `scale(0.97)` in, released in 100ms.
 
 ## Behaviour
 
@@ -122,7 +123,9 @@ plain link. Full table in `docs.html`.
   labelled regions; focus rings preserved.
 - Under `md` (860px in the vanilla build) the bar collapses to a sheet with
   height-animated accordions.
-- `prefers-reduced-motion` collapses the transitions.
+- `prefers-reduced-motion` goes gentler, not silent: opacity fades stay, the
+  transforms, blur and size morph land instantly.
+- Hover motion is gated behind `@media (hover: hover) and (pointer: fine)`.
 
 ## After editing the component
 

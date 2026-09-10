@@ -417,6 +417,12 @@
       out.classList.remove("is-active");
     }
 
+    // close() deliberately leaves the last panel visible so the card can fade
+    // out with its content intact — so clear any stale one on a cold open.
+    this.items.forEach(function (other, i) {
+      if (other.panel && i !== index) other.panel.classList.remove("is-active");
+    });
+
     var panel = item.panel;
     panel.style.setProperty("--bn-shift", dir * 14 + "px");
     if (!wasOpen) panel.style.setProperty("--bn-shift", "0px");

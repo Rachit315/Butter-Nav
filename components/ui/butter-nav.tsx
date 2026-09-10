@@ -70,8 +70,32 @@ export interface ButterNavProps
 const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect
 
-const EASE = "cubic-bezier(0.32, 0.72, 0, 1)"
+/* Curves from the animations.dev catalogue. Every duration below sits under
+   the 300ms ceiling for UI motion. */
+const EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)" /* entering / exiting */
+const EASE_IN_OUT = "cubic-bezier(0.77, 0, 0.175, 1)" /* moving on screen */
+const EASE_DRAWER = "cubic-bezier(0.32, 0.72, 0, 1)" /* the sheet */
+
+const CLOSE = 140 /* system response — snappier than the deliberate open */
+const OPEN = 200
+const FADE = 160
+const PRESS = 160
 const SHIFT = 14
+const PILL_BASE = 100 /* the pill scales off a fixed width, never animates it */
+
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = React.useState(false)
+
+  React.useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const update = () => setReduced(query.matches)
+    update()
+    query.addEventListener("change", update)
+    return () => query.removeEventListener("change", update)
+  }, [])
+
+  return reduced
+}
 
 export function ButterNav({
   brand,
@@ -81,7 +105,7 @@ export function ButterNav({
   cta,
   openDelay = 90,
   closeDelay = 170,
-  morphDuration = 460,
+  morphDuration = 240,
   closeOnScroll = true,
   sticky = true,
   linkComponent,
@@ -89,8 +113,15 @@ export function ButterNav({
   ...props
 }: ButterNavProps) {
   const Link = (linkComponent ?? "a") as React.ElementType
+  // Reduced motion keeps the fades that explain what changed and drops
+  // everything that moves or resizes.
+  const reduced = usePrefersReducedMotion()
+  const morph = reduced ? 0 : morphDuration
 
   const [active, setActive] = React.useState<number | null>(null)
+  // The panel that is painted. It lags `active` on close so the card can fade
+  // out with its content intact instead of emptying first.
+  const [shown, setShown] = React.useState<number | null>(null)
   const [sheet, setSheet] = React.useState(false)
   const [hovered, setHovered] = React.useState<number | null>(null)
 
@@ -108,6 +139,10 @@ export function ButterNav({
   const pillShown = React.useRef(false)
   const openTimer = React.useRef<number | null>(null)
   const closeTimer = React.useRef<number | null>(null)
+
+  React.useEffect(() => {
+    if (active !== null) setShown(active)
+  }, [active])
 
   /* ----------------------------- measurement ----------------------------- */
 
@@ -152,6 +187,10 @@ export function ButterNav({
       )
       x.current = next
 
+      // Anchor the scale origin on the trigger before anything animates.
+      const origin = rect.left + rect.width / 2 - innerRect.left - next
+      card.style.setProperty("--butter-nav-origin", `${Math.round(origin)}px`)
+
       const commit = () => {
         card.style.width = `${size.w}px`
         card.style.height = `${size.h}px`
@@ -163,7 +202,7 @@ export function ButterNav({
         card.style.transition = "none"
         card.style.width = `${size.w}px`
         card.style.height = `${size.h}px`
-        card.style.transform = `translate3d(${next}px, -6px, 0) scale(0.97)`
+        card.style.transform = `translate3d(${next}px, -4px, 0) scale(0.97)`
         void card.offsetWidth
         card.style.transition = ""
         commit()
@@ -194,15 +233,17 @@ export function ButterNav({
     const left = rect.left - navRect.left - pad
     const width = rect.width + pad * 2
 
+    // scaleX off a fixed base keeps this on the compositor — animating
+    // `width` would run layout on every frame of a hover effect.
+    const transform = `translate3d(${left}px, -50%, 0) scaleX(${width / PILL_BASE})`
+
     if (!pillShown.current) {
       pill.style.transition = "none"
-      pill.style.transform = `translate3d(${left}px, -50%, 0)`
-      pill.style.width = `${width}px`
+      pill.style.transform = transform
       void pill.offsetWidth
       pill.style.transition = ""
     } else {
-      pill.style.transform = `translate3d(${left}px, -50%, 0)`
-      pill.style.width = `${width}px`
+      pill.style.transform = transform
     }
     pill.style.opacity = "1"
     pillShown.current = true
@@ -213,7 +254,7 @@ export function ButterNav({
     if (!card) return
 
     if (active === null) {
-      card.style.transform = `translate3d(${x.current}px, -6px, 0) scale(0.97)`
+      card.style.transform = `translate3d(${x.current}px, -4px, 0) scale(0.97)`
       wasOpen.current = false
       return
     }
@@ -343,10 +384,13 @@ export function ButterNav({
             <span
               ref={pillRef}
               aria-hidden="true"
-              className="pointer-events-none absolute left-0 top-1/2 h-[30px] rounded-full bg-black/[0.06] opacity-0 dark:bg-white/[0.08]"
+              className="pointer-events-none absolute left-0 top-1/2 h-[30px] origin-left rounded-[10px] bg-black/[0.06] opacity-0 dark:bg-white/[0.08]"
               style={{
-                transform: "translate3d(0, -50%, 0)",
-                transition: `transform ${morphDuration}ms ${EASE}, width ${morphDuration}ms ${EASE}, opacity 180ms linear`,
+                width: PILL_BASE,
+                transform: "translate3d(0, -50%, 0) scaleX(0)",
+                transition: reduced
+                  ? `opacity ${FADE}ms linear`
+                  : `transform 220ms ${EASE_OUT}, opacity 120ms linear`,
               }}
             />
 
@@ -443,7 +487,7 @@ export function ButterNav({
                     sheet && line === 1 && "opacity-0",
                     sheet && line === 2 && "-translate-y-[6.5px] -rotate-45"
                   )}
-                  style={{ transitionTimingFunction: EASE }}
+                  style={{ transitionTimingFunction: EASE_IN_OUT }}
                 />
               ))}
             </span>
@@ -461,7 +505,7 @@ export function ButterNav({
               requestClose()
             }}
             className={cn(
-              "pointer-events-none absolute left-0 top-[10px] h-0 w-0 origin-top overflow-hidden rounded-2xl bg-white opacity-0 dark:bg-[#0b0b0b]",
+              "pointer-events-none absolute left-0 top-[10px] h-0 w-0 overflow-hidden rounded-2xl bg-white opacity-0 [contain:paint] dark:bg-[#0b0b0b]",
               "shadow-[inset_0_0_0_0.4px_rgba(170,170,170,0.2),0_0_0_1px_rgba(0,0,0,0.08),0_1px_1px_rgba(0,0,0,0.02),0_8px_16px_-4px_rgba(0,0,0,0.04),0_24px_32px_-8px_rgba(0,0,0,0.06)]",
               "dark:shadow-[inset_0_0_0_0.4px_rgba(170,170,170,0.2),0_0_0_1px_rgba(255,255,255,0.09),0_24px_60px_-20px_rgba(0,0,0,0.9)]",
               // invisible bridge so the pointer can cross the bar → card gap
@@ -469,9 +513,18 @@ export function ButterNav({
               open && "pointer-events-auto opacity-100"
             )}
             style={{
-              transform: "translate3d(0, -6px, 0) scale(0.97)",
-              transition: `width ${morphDuration}ms ${EASE}, height ${morphDuration}ms ${EASE}, transform ${morphDuration}ms ${EASE}, opacity 260ms cubic-bezier(0.16, 1, 0.3, 1)`,
-              willChange: "width, height, transform, opacity",
+              // Scales out of the trigger that opened it, not its own centre.
+              transformOrigin: "var(--butter-nav-origin, 50%) 0",
+              transform: "translate3d(0, -4px, 0) scale(0.97)",
+              transition: reduced
+                ? `opacity ${FADE}ms linear`
+                : [
+                    `width ${open ? morph : CLOSE}ms ${open ? EASE_IN_OUT : EASE_OUT}`,
+                    `height ${open ? morph : CLOSE}ms ${open ? EASE_IN_OUT : EASE_OUT}`,
+                    `transform ${open ? morph : CLOSE}ms ${open ? EASE_IN_OUT : EASE_OUT}`,
+                    `opacity ${open ? OPEN : CLOSE}ms ${EASE_OUT}`,
+                  ].join(", "),
+              willChange: open ? "width, height, transform" : undefined,
             }}
           >
             {items.map((item, i) => {
@@ -479,11 +532,7 @@ export function ButterNav({
               // Inactive panels rest on the side they will exit / enter from, so
               // the cross-fade always follows the direction of travel.
               const shift =
-                active === null || active === i
-                  ? 0
-                  : i > active
-                    ? SHIFT
-                    : -SHIFT
+                shown === null || shown === i ? 0 : i > shown ? SHIFT : -SHIFT
 
               return (
                 <div
@@ -497,15 +546,23 @@ export function ButterNav({
                   }}
                   className={cn(
                     "absolute left-0 top-0 w-max p-2",
-                    active === i
+                    shown === i && active !== null
                       ? "pointer-events-auto opacity-100"
-                      : "pointer-events-none opacity-0"
+                      : shown === i
+                        ? "pointer-events-none opacity-100"
+                        : "pointer-events-none opacity-0"
                   )}
                   style={{
-                    transform: `translate3d(${shift}px, 0, 0)`,
-                    transition:
-                      "opacity 200ms linear, transform 200ms cubic-bezier(0.16, 1, 0.3, 1)",
-                    transitionDelay: active === i ? "60ms" : "0ms",
+                    // A touch of blur blends the two panels into one perceived
+                    // transformation instead of two overlapping states.
+                    filter: reduced || shown === i ? "blur(0px)" : "blur(3px)",
+                    transform: reduced
+                      ? undefined
+                      : `translate3d(${shift}px, 0, 0)`,
+                    transition: reduced
+                      ? `opacity ${FADE}ms linear`
+                      : `opacity ${FADE}ms linear, transform ${FADE}ms ${EASE_OUT}, filter ${FADE}ms ${EASE_OUT}`,
+                    transitionDelay: shown === i ? "40ms" : "0ms",
                   }}
                 >
                   <ButterNavPanel menu={item.menu} Link={Link} />
@@ -645,7 +702,7 @@ function ButterNavSheet({
           : "pointer-events-none -translate-y-2 scale-[0.98] opacity-0"
       )}
       style={{
-        transition: `opacity 260ms cubic-bezier(0.16, 1, 0.3, 1), transform 260ms ${EASE}`,
+        transition: `opacity ${open ? OPEN : CLOSE}ms ${EASE_OUT}, transform ${open ? OPEN : CLOSE}ms ${EASE_DRAWER}`,
       }}
     >
       {items.map((item, i) =>
@@ -655,7 +712,8 @@ function ButterNavSheet({
               type="button"
               aria-expanded={expanded === i}
               onClick={() => setExpanded(expanded === i ? null : i)}
-              className="flex w-full items-center justify-between rounded-[10px] p-3.5 text-left text-sm text-[#171717] dark:text-[#f2f2f2]"
+              style={{ transitionDuration: `${PRESS}ms`, transitionTimingFunction: EASE_OUT }}
+              className="flex w-full items-center justify-between rounded-[10px] p-3.5 text-left text-sm text-[#171717] transition-transform active:scale-[0.985] active:duration-100 motion-reduce:active:scale-100 dark:text-[#f2f2f2]"
             >
               {item.label}
               <svg
@@ -668,7 +726,7 @@ function ButterNavSheet({
                   "transition-transform duration-300",
                   expanded === i && "rotate-180"
                 )}
-                style={{ transitionTimingFunction: EASE }}
+                style={{ transitionTimingFunction: EASE_IN_OUT }}
               >
                 <path
                   d="M3 4.5L6 7.5L9 4.5"
@@ -683,8 +741,8 @@ function ButterNavSheet({
               className="grid transition-[grid-template-rows] duration-[380ms]"
               style={{
                 gridTemplateRows: expanded === i ? "1fr" : "0fr",
-                transitionTimingFunction: EASE,
-                transitionDuration: `${morphDuration - 80}ms`,
+                transitionTimingFunction: EASE_IN_OUT,
+                transitionDuration: `${morphDuration}ms`,
               }}
             >
               <div className="overflow-hidden">

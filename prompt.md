@@ -42,20 +42,32 @@ top-level items must never unmount or remount anything; the same card morphs.
    width/height can be measured at any time without a reflow mid-animation.
    Cache the sizes; re-measure on resize (debounced ~120ms).
 2. On open, set the card's `width`, `height` and `translate3d(x)` together and
-   let them interpolate over 460ms with `cubic-bezier(0.32, 0.72, 0, 1)` — a
-   long decelerating tail with no overshoot. The card is centered under the
-   hovered trigger and clamped to a 16px viewport margin.
-3. Content cross-fades directionally: inactive panels rest translated ±14px on
+   let them interpolate over **240ms** with `cubic-bezier(0.77, 0, 0.175, 1)`
+   (movement on screen). The card is centered under the hovered trigger and
+   clamped to a 16px viewport margin. Give it `contain: paint`, and set
+   `will-change: width, height, transform` only while it is open.
+3. Its `transform-origin` is the trigger, not its own centre: set
+   `--origin: <trigger centre − card left>px` in the same frame you position
+   it, and use `transform-origin: var(--origin) 0`.
+4. Content cross-fades directionally: inactive panels rest translated ±14px on
    the side they will exit toward or enter from (right of the active index →
-   +14px, left → −14px), fading over 200ms with a 60ms delay on entry, so the
-   shell leads and the text follows.
-4. A single rounded highlight pill sits behind the nav links and slides its
-   `transform` and `width` between items on the same 460ms curve. The first
-   time it appears it jumps into place with transitions disabled.
-5. First open only: jump the card to the correct size and position with
+   +14px, left → −14px) **and sit at `filter: blur(3px)`**, so the two states
+   read as one transformation rather than two overlapping layers. 160ms, with
+   a 40ms delay on entry, so the shell leads and the text follows.
+5. A single rounded highlight pill sits behind the nav links. Give it a fixed
+   `width: 100px`, `transform-origin: 0 50%`, and drive it with
+   `translate3d(x, -50%, 0) scaleX(target / 100)` over 220ms with
+   `cubic-bezier(0.23, 1, 0.32, 1)` — never animate its `width`, which would
+   run layout on every frame of a hover effect. Radius `10px` so the scaling
+   does not visibly stretch the caps. The first time it appears it jumps into
+   place with transitions disabled.
+6. Enter and exit are asymmetric: opening is the deliberate half at 240ms
+   (200ms for the opacity), closing is the system response at 140ms with
+   `cubic-bezier(0.23, 1, 0.32, 1)`.
+7. First open only: jump the card to the correct size and position with
    `transition: none`, force a reflow, then animate opacity `0 → 1`,
-   `translateY(-6px) → 0` and `scale(0.97) → 1` over 260ms. Otherwise it would
-   slide in from x=0.
+   `translateY(-4px) → 0` and `scale(0.97) → 1`. Otherwise it would slide in
+   from x=0. Never animate from `scale(0)`.
 
 ## Interaction
 
@@ -68,7 +80,18 @@ top-level items must never unmount or remount anything; the same card morphs.
   leaving the component all close it.
 - Triggers are real `<button>`s with `aria-expanded`, `aria-haspopup` and
   `aria-controls`; panels are `role="region"` labelled by their trigger.
-- Respect `prefers-reduced-motion` by collapsing the transition durations.
+- Press feedback on every pressable surface: `transform: scale(0.97)` on
+  `:active` over 160ms, released in 100ms.
+- Gate every hover animation behind
+  `@media (hover: hover) and (pointer: fine)` — touch fires a phantom hover on
+  tap.
+- Under `prefers-reduced-motion: reduce`, go gentler rather than silent: keep
+  the opacity fades that explain what changed at ~150ms, and drop the
+  transforms, the blur and the size morph so they land instantly.
+- Animate `transform` and `opacity` only. The card's `width`/`height` morph is
+  the one deliberate exception — it is a single out-of-flow, `contain: paint`
+  element whose children are absolutely positioned, so it reflows nothing else;
+  a counter-scaled FLIP would distort the 0.4px stroke and the 16px radius.
 
 ## Panel content
 
